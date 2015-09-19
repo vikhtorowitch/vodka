@@ -1,0 +1,32 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;Self-healing script. Healing can be interrupted with movement and fire keys.
+;
+;Executed by action added in spawn.sqs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+_unit=_this select 0
+_target=_this select 1
+?_unit!=player or _target!=player:exit
+
+_weapontype=getNumber (configFile/"CfgWeapons"/(currentWeapon _unit)/"type")
+
+?_weapontype!=2 and _weapontype!=4:_unit playMove "ainvpknlmstpslaywrfldnon_medic"
+?_weapontype==2:_unit playMove "ainvpknlmstpsnonwnondnon_medic_1"
+?_weapontype==4:_unit playMove "ainvpknlmstpsnonwnondnon_medic_2"
+
+;CLY_healinterrupt is triggered in cly_keypress.sqs
+@(animationState _unit in ["ainvpknlmstpslaywrfldnon_medic","ainvpknlmstpsnonwnondnon_medic_1","ainvpknlmstpsnonwnondnon_medic_2"])
+@!(animationState _unit in ["ainvpknlmstpslaywrfldnon_medic","ainvpknlmstpsnonwnondnon_medic_1","ainvpknlmstpsnonwnondnon_medic_2"]) or CLY_healinterrupt
+?CLY_healinterrupt:goto "interrupt"
+
+?alive _unit:_unit setDamage 0
+exit
+
+#interrupt
+?_weapontype!=2 and _weapontype!=4:_unit setVehicleInit "this switchMove 'ainvpknlmstpslaywrfldnon_amovpknlmstpsraswrfldnon';this playMoveNow 'ainvpknlmstpslaywrfldnon_amovpknlmstpsraswrfldnon'"
+?_weapontype==2:_unit setVehicleInit "this switchMove 'ainvpknlmstpsnonwnondnon_amovpknlmstpsraswpstdnon';this playMoveNow 'ainvpknlmstpsnonwnondnon_amovpknlmstpsraswpstdnon'"
+?_weapontype==4:_unit setVehicleInit "this switchMove 'amovpknlmstpsnonwnondnon_amovpknlmstpsraswlnrdnon';this playMoveNow 'amovpknlmstpsnonwnondnon_amovpknlmstpsraswlnrdnon'"
+processInitCommands
+
+exit

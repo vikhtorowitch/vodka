@@ -1,0 +1,17 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;This is the body removal script to keep the performance playable.
+;
+;The removal delay is set in init.sqs and this script is executed in spawn.sqs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+?!isServer:exit
+
+_unit=_this select 0
+
+~CLY_bodyremovaltime
+hideBody _unit
+~5
+deleteVehicle _unit
+
+exit

@@ -1,0 +1,8 @@
+@!CLY_cutscene
+
+#loop
+@damage speaker<1
+speaker say "funmusic"
+_starttime=time
+@time-_starttime>11.7 or damage speaker==1
+goto "loop"

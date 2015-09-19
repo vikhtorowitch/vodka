@@ -1,0 +1,5 @@
+_damage=_this select 3
+
+speaker setDamage _damage
+
+exit

@@ -1,0 +1,53 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;"Killed" eventhandler script (deathcam and kill stat)
+;
+;Executed in a unit's "Killed" eventhander set in spawn.sqs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+_victim=_this select 0
+_killer=_this select 1
+_range=_killer distance _victim
+_target=nil
+
+?CLY_cutscene:exit
+
+;?_killer!=_victim and _victim==player:_killer setVehicleInit "[this] exec 'cly_ehkiller.sqs'";processInitCommands;CLY_stat_allkills=CLY_stat_allkills+1;publicVariable "CLY_stat_allkills"
+
+;Update longest shot just in case "Hit" doesn't activate
+;?_victim==player and _range>(CLY_stat_longest select 0):CLY_stat_longest=[_range,name _killer,name _victim];publicVariable "CLY_stat_longest"
+
+?_killer==player or _victim!=player or CLY_deathcam==0:exit
+
+;Modify camera altitude for vehicles
+_camz=CLY_playerheight
+?CLY_playervehicle!=player:_camz=((boundingBox CLY_playervehicle select 1) select 2)+0.2
+
+_pos=[(getPosATL vehicle _victim select 0),(getPosATL vehicle _victim select 1),(getPosATL vehicle _victim select 2)+_camz]
+?CLY_deathcam==1:_target=[getPosATL vehicle _killer select 0,getPosATL vehicle _killer select 1,(getPosATL vehicle _killer select 2)+1]
+?CLY_deathcam==1 and (getPos vehicle _killer select 2)!=(getPosATL vehicle _killer select 2) and (getPos vehicle _killer select 2)+0.6>(getPosASL vehicle _killer select 2):_target=[getPosASL vehicle _killer select 0,getPosASL vehicle _killer select 1,(getPosASL vehicle _killer select 2)+1]
+?CLY_deathcam==2:_target=vehicle _killer
+?CLY_deathcam==3 and alive _killer:_killer switchCamera "internal";titleCut ["","BLACK IN",1];goto "skipcam"
+
+?isNil "_target":titleCut ["","BLACK IN",1];goto "skipcam"
+
+titleCut ["","BLACK IN",1]
+
+_camera = "Camera" camCreate [0,0,0]
+_camera cameraEffect ["internal","back"]
+showCinemaBorder false
+
+_camera camPrepareTarget _target 
+_camera camPreparePos _pos
+_camera camPrepareFOV 1
+_camera camCommitPrepared 0
+
+#skipcam
+titleText [format ["Killed by %1",name _killer],"PLAIN DOWN",0.3]
+
+@alive player
+?CLY_cutscene:exit
+player cameraEffect ["terminate","back"]
+?!isNil "_camera":camDestroy _camera
+
+exit

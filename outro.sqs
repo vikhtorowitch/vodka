@@ -1,0 +1,41 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;This is the outro script.
+;
+;Executed in end.sqs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+playMusic "outro"
+
+_gameovertext="Time limit reached!"
+?CLY_scorelimitreached:_gameovertext="Score limit reached!"
+
+cutText ["","BLACK OUT",1]
+1 fadeSound 0
+titleText [_gameovertext,"PLAIN",1]
+~1
+CLY_cutscene=true
+speaker setDamage 0
+
+cutText ["","BLACK IN",1]
+
+_camera = "Camera" camCreate [0,0,0]
+_camera cameraEffect ["internal","back"]
+showCinemaBorder false
+
+;=== 11:16:27
+_camera camPrepareTarget [14084.67,-87089.66,-25485.11]
+_camera camPreparePos [3792.96,8972.84,12.63]
+_camera camPrepareFOV 0.700
+_camera camCommitPrepared 0
+
+;=== 11:17:56
+_camera camPrepareTarget [14083.80,-87085.66,-25500.17]
+_camera camPreparePos [3786.17,8972.11,17.59]
+_camera camPrepareFOV 0.700
+_camera camCommitPrepared 15
+
+~11
+
+endMission "END1"

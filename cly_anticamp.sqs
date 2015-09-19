@@ -1,0 +1,13 @@
+#start
+@alive player
+_loop=0
+_camppos=getPosATL player
+
+#loop
+~1
+_loop=_loop+1
+?!alive player or CLY_cutscene:goto "start"
+?_loop<=3 and (player distance _camppos)>5:goto "start"
+?_loop>3 and (player distance _camppos)>10:goto "start"
+?_loop>=15 and (player distance _camppos)<10:player setvehicleinit "this say 'vodka1'";processInitCommands;goto "start"
+goto "loop"

@@ -1,0 +1,21 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;Custom keypresses. Associated with healing interruption.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+~0.1
+
+CLY_key_healinterrupt=[]
+
+;Keyboard
+findDisplay 46 displaySetEventHandler ["KeyDown","if ((_this select 1) in CLY_key_healinterrupt) then {CLY_healinterrupt=true}"]
+findDisplay 46 displaySetEventHandler ["KeyUp","if ((_this select 1) in CLY_key_healinterrupt) then {CLY_healinterrupt=false}"]
+
+;Mouse
+findDisplay 46 displaySetEventHandler ["MouseButtonDown","if ((_this select 1)==0) then {CLY_healinterrupt=true}"]
+findDisplay 46 displaySetEventHandler ["MouseButtonUp","if ((_this select 1)==0) then {CLY_healinterrupt=false}"]
+
+#loop
+CLY_key_healinterrupt=actionKeys "fire"+actionKeys "moveForward"+actionKeys "moveFastForward"+actionKeys "moveBack"+actionKeys "moveLeft"+actionKeys "moveRight"+actionKeys "turnLeft"+actionKeys "turnRight"
+~5
+goto "loop"

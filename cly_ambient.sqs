@@ -1,0 +1,25 @@
+;Ambient sounds script
+
+CLY_ambientlogics=[ambient_1,ambient_2,ambient_3,ambient_4,ambient_5,ambient_6,ambient_7,ambient_8,ambient_9,ambient_10,ambient_11,ambient_12,ambient_13,ambient_14,ambient_15,ambient_16,ambient_17,ambient_18,ambient_19,ambient_20,ambient_21,ambient_22,ambient_23,ambient_24,ambient_25,ambient_26]
+CLY_ambientsounds=["chdkzDrunken01","chdkzDrunken02","chdkzDrunken03","chdkzDrunken04","chdkzDrunken05","chdkzDrunken06","chdkzDrunken07","chdkzDrunken08","chdkzDrunken09","chdkzDrunken10","chdkzDrunken11","chdkzDrunken12","chdkzDrunken13"]
+
+?!isServer:goto "clientloop"
+
+CLY_ambient=[objNull,""]
+
+#serverloop
+_r1=CLY_ambientlogics select (floor random count CLY_ambientlogics)
+_r2=CLY_ambientsounds select (floor random count CLY_ambientsounds)
+?_r1==(CLY_ambient select 0) or _r2==(CLY_ambient select 1):goto "serverloop"
+
+CLY_ambient=[_r1,_r2];publicVariable "CLY_ambient"
+CLY_ambient select 0 say (CLY_ambient select 1)
+
+~2+random 4
+goto "serverloop"
+
+
+#clientloop
+?!isNil "CLY_ambient":CLY_ambient select 0 say (CLY_ambient select 1);CLY_ambient=nil
+~0.2
+goto "clientloop"

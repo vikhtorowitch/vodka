@@ -1,0 +1,455 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;This is the init script of the template and it's automatically executed first.
+;It activates other scripts and contains most of the template's editable variables.
+;
+;C = you can comment/uncomment the line(s)
+;E = you can edit the values yourself in the line(s)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Wait for JIP to load
+@isServer or !isNull player
+
+;Initialize Multiplayer Framework (not needed)
+;?isNil "RE":[] execVM "\ca\Modules\MP\data\scripts\MPframework.sqf"
+
+;Move player to a safe location for the duration of loading and intro
+;CLY_playerstartpos=getPosATL player
+;player setPos [getPosATL player select 0,getPosATL player select 1,10000]
+
+
+
+;---Description.ext parameter settings---
+;Delete the parameters in description.ext if you want to set the features here.
+;?isNil is there to make all settings work in the editor.
+
+;E - Define parameters
+;If you remove a parameter in description.ext, delete its corresponding line here and
+;rearrange the select numbers accordingly.
+?isNil "paramsArray":goto "skipparam"
+
+_boolean=[false,true]
+CLY_timelimit=paramsArray select 0
+CLY_scorelimit=paramsArray select 1
+CLY_weaponparam=paramsArray select 2
+CLY_handgrenades=_boolean select (paramsArray select 3)
+
+#skipparam
+?isNil "CLY_timelimit":CLY_timelimit=900
+?isNil "CLY_scorelimit":CLY_scorelimit=0
+?isNil "CLY_weaponparam":CLY_weaponparam=1
+
+;E - Hand grenades are added to ammo crates and players
+?isNil "CLY_handgrenades":CLY_handgrenades=true
+
+;E - Weapons have unlimited ammo (no reloading)
+?isNil "CLY_unlimitedammo":CLY_unlimitedammo=false
+
+;E - Anti-camping features
+;0 = Off
+;1 = Anti-prone: player switches to kneeling if he lies down
+?isNil "CLY_anticamp":CLY_anticamp=0
+;"Anti-camp","Anti-prone & anti-camp"
+
+;E - Anti-camping related limits (not functional)
+;How many seconds of camping until a camper is warned
+;CLY_anticampwarningtime=20
+;How many seconds to leave a camping spot without punishment after the warning
+;CLY_anticamprevealtime=10
+;Camping spot radius in meters: smaller one takes less effort to leave and re-enter
+;CLY_anticampradius=25
+;///Description.ext parameter settings///
+
+
+
+;CE - Set view distance of the mission; improve fps by lowering it in smaller missions
+;where you don't have to see very far. Comment it if you want the mission to use the
+;server default. Remember that all PCs can't handle a very large view distance.
+CLY_viewdistance=400
+
+?isNil "CLY_viewdistance":CLY_viewdistance=viewDistance
+setViewDistance CLY_viewdistance
+
+;Terrain level of detail: 50 (no grass) is the most recommended one for PvP.
+setTerrainGrid 50
+
+;Disable radio messages
+enableRadio false
+
+;CE - Custom color palette
+"colorCorrections" ppEffectEnable true
+"colorCorrections" ppEffectAdjust [1,1,0,[0,0,0,0],[0.3,0.3,0.3,2],[1,1,1,0]]
+"colorCorrections" ppEffectCommit 0
+
+;E - Time in seconds until dead bodies vanish
+CLY_bodyremovaltime=120
+
+;E - Deathcam
+;0 = Off, 1 = passive (targets killer's last position), 2 = active (follows killer)
+;3 = first person view of killer
+CLY_deathcam=1
+
+;E - Respawn direction: determines the direction the player faces upon respawn
+;0 = Last direction upon death, 1 = Random, 2 = Approximately facing nearest enemy
+;NOTE: mode 2 works in MP only so don't worry about it in the editor
+CLY_respawndir=2
+
+;E - Enable limb protection to prevent shaky hands and having to crawl when hit
+;0 = Off, 1 = Leg protection, 2 = Arm protection, 3 = Both
+CLY_limbprotection=0
+
+;E - Allow players to heal themselves without a medic tent
+;0 = Off, 1 = Self-bandaging, 2 = Automatic regeneration
+;2nd value = regeneration speed from 1 to 0 damage in seconds
+CLY_selfheal=[1,15]
+
+;E - Show intro at the start of the mission
+CLY_showintro=true
+
+;CE - Force the wind movement vector to make flags fly nicely
+setWind [-3,1,true]
+
+;E - Players spawn in the air with a parachute
+;1st value: 0 = no parachute, 1 = parachute at start, 2 = parachute at each spawn
+;2nd value: spawning altitude
+CLY_paraspawn=[0,30]
+
+;C - Quick parachute dismount trigger
+;Disembarks the player from his parachute as soon as he touches the ground,
+;eliminating the "sitting duck" phase. Doesn't affect steerable parachute.
+;Use the feature if the mission has aircraft or otherwise uses parachutes.
+;quickparatrigger=createTrigger ["EmptyDetector",[0,0,0]];quickparatrigger setTriggerStatements ["vehicle player isKindOf 'ParachuteBase' and getPos vehicle player select 2<0","player setPosATL [getPosATL vehicle player select 0,getPosATL vehicle player select 1,(getPosATL vehicle player select 2)-(getPos vehicle player select 2)]",""];quickparatrigger setTriggerActivation ["NONE","PRESENT",true]
+
+;E - Ammo distribution
+;1st value
+;0 = same number of magazines is given regardless of type
+;1 = same amount of space taken in inventory (1 big magazine for 2 normal ones)
+;2 = same amount of bullets (recommended only for sniper and low ammo scenarios)
+;2nd value: Amount of magazines given at each spawn (max 12)
+;If the 1st value is 2, this value is the minimum amount of bullets players should
+;have. Magazines are given until this amount of bullets is reached.
+;Example: value of 25 gives 5x5rd, 3x10rd, 2x20rd and 1x30rd magazines.
+;3rd value: 0 = launchers (as primary weapon) use same rules, 1-6 = amount of rockets
+;4th value: 0 = handguns (as primary weapon) use same rules, 1-8 = amount of magazines
+CLY_ammodistrule=[1,7,6,8]
+
+;E - Grenade launcher ammo distribution
+;1st value
+;0 = Hand grenades are given normally
+;1 = No hand grenades are given if player has a grenade launcher
+;2nd value: Amount of grenade launcher ammo given (max 8)
+CLY_gldistrule=[1,4]
+
+;E - Secondary weapon
+;1st value: number of handgun mags (0 = no handgun)
+;2nd value: number of launcher mags (0 = no launcher)
+;Secondary magazines override primary magazines if there is an inventory space conflict
+;(e.g. handgun mags vs. 40mm grenades and rockets vs. rifle mags). Heavy launchers
+;always have max 1 missile. Handgun isn't added if the primary weapon is a handgun.
+;Launcher isn't added if the primary weapon is an MG, heavy sniper or launcher.
+CLY_secondaryweapon=[8,0]
+;E - Secondary weapon pools (don't leave them empty)
+CLY_secondaryhandgunpool=["Makarov","MakarovSD"]
+CLY_secondarylauncherpool=["RPG7V"]
+
+;E - Amount of hand grenades added to players at spawn (if grenades are enabled)
+CLY_handgrenadesadded=1
+;E - Type of hand grenade used: HandGrenade + _East, _West and _Stone
+;Smokes, mines and satchels can be used if necessary
+CLY_handgrenadetype="HandGrenade"
+
+
+
+;---Weapon boost---
+;E - Activate weapon boost: make weapons more accurate and/or powerful.
+;1st value - Accuracy enhancement is used (works for pistols only)
+;2nd value - Speed multiplier of bullets (for all weapons in CLY_boostarray)
+;1 is normal, 2 is usually instakill regardless of where you hit.
+;Value greater than 2.5 is not recommended because of lag and glitches.
+;[false,1] disables the feature
+CLY_boost=[true,1.5]
+
+;E - Define the weapons (classnames) that receive boost to their power
+;By default this feature is used by pistols since they're not very powerful.
+;If you want all guns to use the boost, make the array empty: CLY_boostarray=[]
+CLY_boostarray=["Colt1911","M9","M9SD","Makarov","MakarovSD"]
+
+;E - Exclude these weapons (works when CLY_boostarray is empty)
+CLY_noboostarray=["RPG7V","RPG18","MetisLauncher","Igla","Strela","M136","SMAW","Javelin","Stinger"]
+
+;Exclude grenades and smoke shells (ammo classnames)
+CLY_noboostammoarray=["GrenadeHand","GrenadeHand_Stone","SmokeShell","SmokeShellYellow","SmokeShellRed","SmokeShellGreen","SmokeShellPurple","SmokeShellBlue","SmokeShellOrange","PipeBomb","TimeBomb","Mine","MineE","G_40mm_HE","G_40mm_Smoke","G_40mm_SmokeRed","G_40mm_SmokeGreen","G_40mm_SmokeYellow","F_40mm_White","F_40mm_Green","F_40mm_Red","F_40mm_Yellow"]
+
+;Load the boost script in case it's needed
+CLY_boostscript=compile preProcessFile "cly_boost.sqf"
+;///Weapon boost///
+
+
+
+;---Borders---
+;E - This feature creates a non-physical border shaped like the respawn marker. If
+;you need more than 1 respawn or border marker, it's best to make the borders manually.
+
+;To manually make a border, place a single marker and name it "bordermarker",
+;"deathbordermarker" or "teleportbordermarker". You need a deathbordermarker only if
+;you want to make it a different shape, otherwise it will be automatically generated
+;if the border type is set to 2 and you haven't placed such a marker.
+
+;Border crossing consequences
+;0 = no border/effect, 1 = heavy fog, 2 = death, 3 = teleport
+CLY_bordertype=1
+;Use teleport as a failsafe for a physical wall to prevent players from escaping.
+;Place an invisible H or game logic named "CLY_teleportpos" where you want players to
+;teleport, otherwise they will teleport to the center of the marker.
+
+;Distance from spawn border to the "soft" border in meters (triggers fog and message)
+CLY_borderdistance=20
+;Distance from spawn border to deadly border in meters (only works with bordertype 2)
+;Make it big enough to allow players to be warned (esp. vehicles)
+;If it's equal or smaller than borderdistance, a fog border will not be created.
+CLY_deathborderdistance=45
+
+CLY_originalfoglevel=fog
+CLY_foglevel=CLY_originalfoglevel
+?(markerSize "bordermarker" select 0)>0 or ((markerSize "deathbordermarker" select 0)>0 and CLY_deathborderdistance<=CLY_borderdistance):goto "manualborder"
+
+?CLY_bordertype==0:goto "borderdone"
+?CLY_bordertype==2 and CLY_deathborderdistance<=CLY_borderdistance:goto "deathborder"
+?CLY_bordertype==3:goto "teleportborder"
+
+_shape=false
+?markerShape "respawn_civilian"=="RECTANGLE":_shape=true
+
+
+;Warning/fog border (blue)
+createMarkerLocal ["bordermarker",markerPos "respawn_civilian"]
+"bordermarker" setMarkerSizeLocal [(markerSize "respawn_civilian" select 0)+CLY_borderdistance,(markerSize "respawn_civilian" select 1)+CLY_borderdistance]
+"bordermarker" setMarkerDirLocal markerDir "respawn_civilian"
+"bordermarker" setMarkerShapeLocal markerShape "respawn_civilian"
+"bordermarker" setMarkerBrushLocal "BORDER"
+"bordermarker" setMarkerColorLocal "ColorBlue"
+
+bordertrigger=createTrigger ["EmptyDetector",markerPos "bordermarker"]
+bordertrigger setTriggerArea [markerSize "bordermarker" select 0,markerSize "bordermarker" select 1,markerDir "bordermarker",_shape]
+bordertrigger setTriggerActivation ["ANY","PRESENT",true]
+?CLY_bordertype==1:bordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","titleText ['You have left the deathmatch area!','PLAIN DOWN',0.5];CLY_foglevel=1","CLY_foglevel=CLY_originalfoglevel"];goto "borderdone"
+?CLY_bordertype==2:bordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","titleText ['Go back or die!','PLAIN DOWN',0.5];CLY_foglevel=1","CLY_foglevel=CLY_originalfoglevel"]
+?CLY_bordertype==2 and (markerSize "deathbordermarker" select 0)>0:goto "manualdeathborder"
+
+;Death border (red)
+createMarkerLocal ["deathbordermarker",markerPos "respawn_civilian"]
+"deathbordermarker" setMarkerSizeLocal [(markerSize "respawn_civilian" select 0)+CLY_deathborderdistance,(markerSize "respawn_civilian" select 1)+CLY_deathborderdistance]
+"deathbordermarker" setMarkerDirLocal markerDir "respawn_civilian"
+"deathbordermarker" setMarkerShapeLocal markerShape "respawn_civilian"
+"deathbordermarker" setMarkerBrushLocal "BORDER"
+"deathbordermarker" setMarkerColorLocal "ColorRed"
+
+deathbordertrigger=createTrigger ["EmptyDetector",markerPos "deathbordermarker"]
+deathbordertrigger setTriggerArea [markerSize "deathbordermarker" select 0,markerSize "deathbordermarker" select 1,markerDir "deathbordermarker",_shape]
+deathbordertrigger setTriggerActivation ["ANY","PRESENT",true]
+deathbordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","player setDamage 1;titleText ['You have died for deserting!','PLAIN',0.3]",""]
+goto "borderdone"
+
+
+;Manually placed borders
+#manualborder
+?(markerSize "bordermarker" select 0)==0 and (markerSize "deathbordermarker" select 0)>0:goto "manualdeathborder"
+
+"bordermarker" setMarkerBrushLocal "BORDER"
+"bordermarker" setMarkerColorLocal "ColorBlue"
+
+_shape=false
+?markerShape "bordermarker"=="RECTANGLE":_shape=true
+
+bordertrigger=createTrigger ["EmptyDetector",markerPos "bordermarker"]
+bordertrigger setTriggerArea [markerSize "bordermarker" select 0,markerSize "bordermarker" select 1,markerDir "bordermarker",_shape]
+bordertrigger setTriggerActivation ["ANY","PRESENT",true]
+?CLY_bordertype==1:bordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","titleText ['You have left the deathmatch area!','PLAIN DOWN',0.5];CLY_foglevel=1","CLY_foglevel=CLY_originalfoglevel"];goto "borderdone"
+?CLY_bordertype==2:bordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","titleText ['Go back or die!','PLAIN DOWN',0.5];CLY_foglevel=1","CLY_foglevel=CLY_originalfoglevel"]
+
+#manualdeathborder
+?(markerSize "deathbordermarker" select 0)==0 and CLY_bordertype!=2:goto "borderdone"
+?(markerSize "deathbordermarker" select 0)>0:goto "manualdeathtrigger"
+
+createMarkerLocal ["deathbordermarker",markerPos "bordermarker"]
+"deathbordermarker" setMarkerSizeLocal [(markerSize "bordermarker" select 0)+(CLY_deathborderdistance-CLY_borderdistance),(markerSize "bordermarker" select 1)+(CLY_deathborderdistance-CLY_borderdistance)]
+"deathbordermarker" setMarkerDirLocal markerDir "bordermarker"
+"deathbordermarker" setMarkerShapeLocal markerShape "bordermarker"
+
+#manualdeathtrigger
+"deathbordermarker" setMarkerBrushLocal "BORDER"
+"deathbordermarker" setMarkerColorLocal "ColorRed"
+
+_shape=false
+?markerShape "deathbordermarker"=="RECTANGLE":_shape=true
+
+deathbordertrigger=createTrigger ["EmptyDetector",markerPos "deathbordermarker"]
+deathbordertrigger setTriggerArea [markerSize "deathbordermarker" select 0,markerSize "deathbordermarker" select 1,markerDir "deathbordermarker",_shape]
+deathbordertrigger setTriggerActivation ["ANY","PRESENT",true]
+deathbordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","player setDamage 1;titleText ['You have died for deserting!','PLAIN',0.3]",""]
+goto "borderdone"
+
+
+;Teleport border (black)
+#teleportborder
+
+?(markerSize "teleportbordermarker" select 0)>0:goto "manualteleportborder"
+
+?(markerSize "teleportbordermarker" select 0)>0:goto "manualteleportborder"
+createMarkerLocal ["teleportbordermarker",markerPos "respawn_civilian"]
+"teleportbordermarker" setMarkerSizeLocal [(markerSize "respawn_civilian" select 0)+CLY_borderdistance,(markerSize "respawn_civilian" select 1)+CLY_borderdistance]
+"teleportbordermarker" setMarkerDirLocal markerDir "respawn_civilian"
+"teleportbordermarker" setMarkerShapeLocal markerShape "respawn_civilian"
+"teleportbordermarker" setMarkerBrushLocal "BORDER"
+"teleportbordermarker" setMarkerColorLocal "ColorBlack"
+
+if (isNil "CLY_teleportpos") then {CLY_teleportpos=markerPos "teleportbordermarker"} else {CLY_teleportpos=getPosATL CLY_teleportpos}
+_shape=false
+?markerShape "teleportbordermarker"=="RECTANGLE":_shape=true
+
+teleportbordertrigger=createTrigger ["EmptyDetector",markerPos "teleportbordermarker"]
+teleportbordertrigger setTriggerArea [markerSize "teleportbordermarker" select 0,markerSize "teleportbordermarker" select 1,markerDir "teleportbordermarker",_shape]
+teleportbordertrigger setTriggerActivation ["ANY","PRESENT",true]
+teleportbordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","cutText ['','BLACK IN',1];player setPosATL CLY_teleportpos",""]
+goto "borderdone"
+
+;Manual teleport border
+#manualteleportborder
+"deathbordermarker" setMarkerBrushLocal "BORDER"
+"deathbordermarker" setMarkerColorLocal "ColorBlack"
+
+if (isNil "CLY_teleportpos") then {CLY_teleportpos=markerPos "teleportbordermarker"} else {CLY_teleportpos=getPosATL CLY_teleportpos}
+_shape=false
+?markerShape "teleportbordermarker"=="RECTANGLE":_shape=true
+
+teleportbordertrigger=createTrigger ["EmptyDetector",markerPos "teleportbordermarker"]
+teleportbordertrigger setTriggerArea [markerSize "teleportbordermarker" select 0,markerSize "teleportbordermarker" select 1,markerDir "teleportbordermarker",_shape]
+teleportbordertrigger setTriggerActivation ["ANY","PRESENT",true]
+teleportbordertrigger setTriggerStatements ["alive player and !(vehicle player in thislist)","cutText ['','BLACK IN',1];player setPosATL CLY_teleportpos",""]
+
+#borderdone
+;///Borders///
+
+
+
+;---Weapon & ammo arrays---
+;E - Full ARMA 2 weapon list, edit only to add new classnames (addons etc.)
+CLY_weaponsarray=["AK_47_M","AK_47_S","AKS_GOLD","AK_74","AK_74_GL","AKS_74_kobra","AKS_74_pso","AKS_74_U","AKS_74_UN_kobra","AK_107_kobra","AK_107_GL_kobra","AK_107_pso","AK_107_GL_pso","bizon","bizon_silenced","M16A2","M16A2GL","m16a4","M16A4_GL","m16a4_acg","M16A4_ACG_GL","M4A1","M4A1_Aim","M4A1_Aim_camo","M4A1_RCO_GL","M4A1_AIM_SD_camo","M4A1_HWS_GL","M4A1_HWS_GL_camo","M4A1_HWS_GL_SD_camo","G36a","G36K","G36C","G36_C_SD_eotech","m8_carbine","m8_carbineGL","m8_compact","MP5A5","MP5SD","MG36","m8_SAW","M240","Mk_48","M249","Pecheneg","PK","RPK_74","DMR","huntingrifle","ksvk","M4SPR","m8_sharpshooter","M24","M40A3","m107","SVD","SVD_CAMO","VSS_vintorez","M1014","Saiga12K","Colt1911","M9","M9SD","Makarov","MakarovSD","Igla","Javelin","M136","MetisLauncher","RPG7V","RPG18","SMAW","Stinger","Strela"]
+
+;E - Parallel weapon name list, edit in accordance to the previous one.
+CLY_weaponsnamearray=["AKM","AKS","Golden AKS","AK-74","AK-74 + GP-25","AKS-74 Kobra","AKS-74 PSO","AKS-74U","AKS-74UN Kobra","AK-107 Kobra","AK-107 Kobra + GP-25","AK-107 PSO","AK-107 PSO + GP-25","PP-19 Bizon","PP-19 Bizon SD","M16A2","M16A2 + M203","M16A4 CCO","M16A4 + M203","M16A4 ACOG","M16A4 ACOG + M203","M4A1","M4A1 CCO","M4A1 CCO Camo","M4A1 ACOG + M203","M4A1 CCO SD","M4A1 HWS + M203","M4A1 HWS Camo + M203","M4A1 HWS SD + M203","G36","G36K","G36C","G36C HWS SD","XM8","XM8 + XM320","XM8 Compact","MP5A5","MP5SD6","MG36","XM8 Automatic Rifle","M240","Mk 48 Mod 0","M249 SAW","PKP Pecheneg","PKM","RPK-74","M14 DMR","CZ 550","KSVK","Mk 12 SPR","XM8 Sharpshooter","M24 SWS","M40A3","M107","SVD","SVD Camo","VSS Vintorez","M1014","Saiga-12K","M1911A1","M9","M9 SD","Makarov PM","Makarov PM SD","Igla 9K38","Javelin FGM-148","M136 AT4","Metis-M 9K115-2","RPG-7V","RPG-18 Mukha","SMAW","Stinger FIM-92F","Strela-2 9K32"]
+
+;E - Weapon categories
+CLY_glarray=["AK_74_GL","AK_107_GL_kobra","AK_107_GL_pso","M16A2GL","M16A4_GL","M16A4_ACG_GL","M4A1_RCO_GL","M4A1_HWS_GL","M4A1_HWS_GL_camo","M4A1_HWS_GL_SD_camo","m8_carbineGL"]
+CLY_sdarray=["AKS_74_UN_kobra","bizon_silenced","M4A1_AIM_SD_camo","M4A1_HWS_GL_SD_camo","G36_C_SD_eotech","MP5SD","VSS_vintorez","M9SD","MakarovSD"]
+CLY_mgarray=["MG36","m8_SAW","M240","Mk_48","M249","Pecheneg","PK","RPK_74"]
+CLY_sniperarray=["DMR","huntingrifle","ksvk","M4SPR","m8_sharpshooter","M24","M40A3","m107","SVD","SVD_CAMO","VSS_vintorez"]
+CLY_shotgunarray=["M1014","Saiga12K"]
+CLY_scopearray=["AKS_74_pso","AK_107_pso","AK_107_GL_pso","m16a4_acg","M16A4_ACG_GL","M4A1_RCO_GL","G36a","G36K","m8_carbine","m8_carbineGL","m8_compact","MG36","m8_SAW","Mk_48","Pecheneg","DMR","huntingrifle","ksvk","M4SPR","m8_sharpshooter","M24","M40A3","m107","SVD","SVD_CAMO","VSS_vintorez"]
+CLY_reddotarray=["AKS_74_kobra","AKS_74_UN_kobra","AK_107_kobra","AK_107_GL_kobra","m16a4","M4A1_Aim","M4A1_Aim_camo","M4A1_AIM_SD_camo","M4A1_HWS_GL","M4A1_HWS_GL_camo","M4A1_HWS_GL_SD_camo","G36_C_SD_eotech"]
+CLY_westweaponsarray=["M16A2","M16A2GL","m16a4","M16A4_GL","m16a4_acg","M16A4_ACG_GL","M4A1","M4A1_Aim","M4A1_Aim_camo","M4A1_RCO_GL","M4A1_AIM_SD_camo","M4A1_HWS_GL","M4A1_HWS_GL_camo","M4A1_HWS_GL_SD_camo","G36a","G36K","G36C","G36_C_SD_eotech","m8_carbine","m8_carbineGL","m8_compact","MP5A5","MP5SD","m8_SAW","M240","Mk_48","M249","DMR","M4SPR","m8_sharpshooter","M24","M40A3","m107","M1014","Colt1911","M9","M9SD","Javelin","M136","SMAW","Stinger"]
+CLY_eastweaponsarray=["AK_47_M","AK_47_S","AKS_GOLD","AK_74","AK_74_GL","AKS_74_kobra","AKS_74_pso","AKS_74_U","AKS_74_UN_kobra","AK_107_kobra","AK_107_GL_kobra","AK_107_pso","AK_107_GL_pso","bizon","bizon_silenced","Pecheneg","PK","RPK_74","huntingrifle","ksvk","SVD","SVD_CAMO","VSS_vintorez","Saiga12K","Makarov","MakarovSD","Igla","MetisLauncher","RPG7V","RPG18","Strela"]
+
+;E - Ammo categories
+CLY_smokearray=["SmokeShell","SmokeShellYellow","SmokeShellRed","SmokeShellGreen","SmokeShellPurple","SmokeShellBlue","SmokeShellOrange","G_40mm_Smoke","G_40mm_SmokeRed","G_40mm_SmokeGreen","G_40mm_SmokeYellow"]
+
+;E - Weapons that should use other than their default ammo
+CLY_altmagweaponarray=["m8_SAW","VSS_vintorez","RPG7V","SMAW"]
+CLY_altmagarray=["100Rnd_556x45_BetaCMag","20Rnd_9x39_SP5_VSS","OG7","SMAW_HEDP"]
+
+;E - Weapons that should have a different type of magazine when unlimited ammo is on.
+;Practical only if you've set RPG or SMAW to use HE ammo and want to prevent epic
+;splash damage spam when unlimited ammo is on.
+;Clear the weapon array if you want them to always use default ammo.
+CLY_unlimitedaltarray=["RPG7V","SMAW"]
+CLY_unlimitedaltmagarray=["PG7V","SMAW_HEAA"]
+
+;E - Parameter weapon pool: these are the individual weapons selectable in the
+;mission parameters. The array corresponds to the parameter values from 10 and up.
+;Remember to change the parameter texts to match the weapons and make sure that the
+;number of parameter elements is correct.
+CLY_parampool=["AK_47_M","AKS_74_kobra","AKS_74_U","AKS_74_UN_kobra","AK_107_kobra","bizon_silenced","PK","RPK_74","SVD","VSS_vintorez","Saiga12K","Makarov","MakarovSD"]
+
+;E - Random pool: weapons that a player can get when respawning.
+;You can add whole catgories by combining arrays.
+;Example: CLY_reddotarray+CLY_shotgunarray+["Colt1911","RPG7V"]
+CLY_randompool=["AK_47_M","AKS_74_kobra","AKS_74_U","AKS_74_UN_kobra","AK_107_kobra","bizon_silenced","PK","RPK_74","SVD","VSS_vintorez","Saiga12K"]
+
+;E - Weapon pools that are used for mission parameters in description.ext
+;For clarity, weapon pool settings in this mission:
+;0 = All weapons in the game (not listed in parameter options)
+;1 = Random pool
+;Edit the array to suit your parameter needs. Maximum number of elements is 10.
+CLY_weaponarrays=[CLY_weaponsarray,CLY_randompool]
+;Tip: when combining arrays, use array1+(array2-array1) to prevent duplicates.
+
+;///Weapon & ammo arrays///
+
+
+
+;---BRIEFING---
+;E - Immerse players with an engaging story that they can identify with.
+;Remove or replace the image tag if you're not Celery.
+player createDiaryRecord ["Diary",["Story","<img image='cly.paa' width='64' height='64'/><br/>Vodka Fest<br/><br/>Today is the annual Vybor vodka festival, the most important event in all of Chernarus! Homebrewers, local distilleries and even some foreign (mostly Russian, Belarussian and Ukrainian) brands put their vodka to the ultimate test in the hands of thirsty Chernarussians.<br/><br/>Violence is a common result of heavy drinking and since guns are almost ubiquitous in the country after the wars, the fighting in Vybor has a potential to get very deadly. This is the story of one of those fights."]]
+
+;E - Change the credits to make yourself the author of the mission and give credit to
+;3rd party contributors and media sources. For the part of this template's author
+;it's enough to leave the mention of the CLY DM Template.
+player createDiaryRecord ["Diary",["Credits","<br/>Mission made by Celery<br/>mika.selleri@gmail.com<br/><br/>Sequel to Armed Assault's DM VODKA! by Frantic.bay and Celery<br/><br/>Intro music:<br/>Mona Carita - Rasputin<br/><br/><img image='cly_dmtemplate.paa' width='64' height='32'/><br/>This mission uses CLY DM Template v0.90 WIP"]]
+
+;Objectives of the mission; they work in conjunction with player statistics
+CLY_objmostkills=player createSimpleTask [""]
+CLY_objmostkills setSimpleTaskDescription ["<br/>Primary objective<br/><br/>Kill other players more than they do.<br/><br/>","Get the most kills",""]
+
+player setCurrentTask CLY_objmostkills
+;///BRIEFING///
+
+
+
+;Animations arrays
+CLY_standanims=["amovpercmstpsraswnondnon","amovpercmstpsraswrfldnon","amovpercmstpsraswpstdnon","amovpercmstpsraswlnrdnon"]
+CLY_kneelanims=["amovpknlmstpsraswnondnon","amovpknlmstpsraswrfldnon","amovpknlmstpsraswpstdnon","amovpknlmstpsraswlnrdnon"]
+CLY_proneanims=["amovppnemstpsraswnondnon","amovppnemstpsraswrfldnon","amovppnemstpsraswpstdnon"]
+CLY_healanims=["ainvpknlmstpslaywrfldnon_medic","ainvpknlmstpsnonwnondnon_medic_1","ainvpknlmstpsnonwnondnon_medic_2","ainvpknlmstpslaywrfldnon_amovpknlmstpsraswrfldnon","ainvpknlmstpsnonwnondnon_amovpknlmstpsraswpstdnon","amovpknlmstpsnonwnondnon_amovpknlmstpsraswlnrdnon","ainvpknlmstpslaywrfldnon_amovpknlmstpsraswrfldnon","ainvpknlmstpsnonwnondnon_amovpknlmstpsraswpstdnon","amovpknlmstpsnonwnondnon_amovpknlmstpsraswlnrdnon"]
+
+;Stance heights to determine deathcam position
+CLY_standheight=1.55
+CLY_kneelheight=1.05
+CLY_proneheight=0.3
+
+
+
+;Loading screen and no sound before intro starts
+titleCut ["","BLACK FADED",100]
+0 fadeSound 0
+CLY_cutscene=true
+
+~1
+
+;Exec other core scripts
+[] exec "intro.sqs"
+[] exec "spawn.sqs"
+[] exec "cly_keypress.sqs"
+
+;Vodka Fest specific
+[] exec "cly_ambient.sqs"
+[] exec "cly_anticamp.sqs"
+[] exec "cly_funmusic.sqs"
+
+
+
+;---Ending trigger---
+?isServer:CLY_timelimitreached=false;publicVariable "CLY_timelimitreached";CLY_scorelimitreached=false;publicVariable "CLY_scorelimitreached"
+
+~2
+
+?isNil "CLY_timelimitreached":CLY_timelimitreached=false
+?isNil "CLY_scorelimitreached":CLY_scorelimitreached=false
+
+?CLY_timelimit>0 and isServer:timetrigger=createTrigger ["EmptyDetector",[0,0,0]];timetrigger setTriggerStatements ["time>=CLY_timelimit","CLY_timelimitreached=true;publicVariable 'CLY_timelimitreached'",""]
+?CLY_scorelimit>0:scoretrigger=createTrigger ["EmptyDetector",[0,0,0]];scoretrigger setTriggerStatements ["(score player)>=CLY_scorelimit","CLY_scorelimitreached=true;publicVariable 'CLY_scorelimitreached'",""];scoretrigger setTriggerTimeout [1,1,1,true]
+
+?CLY_timelimit>0 or CLY_scorelimit>0:outrotrigger=createTrigger ["EmptyDetector",[0,0,0]];outrotrigger setTriggerStatements ["(CLY_scorelimitreached or CLY_timelimitreached) and !CLY_cutscene","[] exec 'outro.sqs'",""]
+;///Ending trigger///
+
+exit

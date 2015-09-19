@@ -1,0 +1,225 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;This is the spawn script. It takes care of the player's weapon loadout and features
+;that require constant updating.
+;
+;Executed in init.sqs
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Decrease server load by not running this script if host is dedicated
+?isDedicated:exit
+
+;Define the weapon or weapon pool used in the deathmatch
+?CLY_weaponparam<10:CLY_weaponparam=CLY_weaponarrays select CLY_weaponparam;goto "paramdone"
+?CLY_weaponparam>=10:CLY_weaponparam=CLY_parampool select (CLY_weaponparam-10)
+#paramdone
+
+;Add 0 hand grenades if feature is turned off.
+?!CLY_handgrenades:CLY_handgrenadesadded=0
+
+;Start script only after intro
+@!CLY_cutscene
+
+;Spawn related procedures
+_unit=player
+_startdir=direction _unit
+_unit setVelocity [0,0,0]
+
+;Use the lower line if you need to place units on top of buildings
+_unit setPosATL [getPos _unit select 0,getPos _unit select 1,0]
+;_unit setPosATL [getPos _unit select 0,getPos _unit select 1,(getPosATL _unit select 2)-(getPos _unit select 2)]
+
+;Add event handlers (they stay after death)
+_unit addEventHandler ["Fired",{_this call CLY_boostscript}]
+_unit addEventHandler ["Killed",{_this exec "cly_ehkilled.sqs"}]
+
+#start
+;?_unit in CLY_campers:CLY_campers=CLY_campers-[_unit];publicVariable "CLY_campers"
+@alive player
+_unit=player
+_grp=group _unit
+
+removeAllWeapons _unit
+_unit addRating -1000000000
+_unit setCaptive true
+_unit setDamage 0
+
+;Respawn direction
+_nearestman=nil
+_distance=1000000
+?CLY_respawndir==2:{if (alive _x and _x!=_unit and _x distance _unit<_distance) then {_nearestman=_x;_distance=_x distance _unit}} forEach playableUnits
+?!isNil "_nearestman":_unit setDir ((getPos _unit select 0)-(getPos _nearestman select 0)) atan2 ((getPos _unit select 1)-(getPos _nearestman select 1))+180+random 90-45
+?CLY_respawndir==1 or (CLY_respawndir==2 and isNil "_nearestman"):_unit setDir _startdir
+
+;Disables conversation AND quick command
+_unit disableConversation true
+
+CLY_healinterrupt=false
+CLY_playerheight=CLY_standheight
+
+
+
+;---Weapon load script---
+;Primary weapon
+_gun=CLY_weaponparam
+?typeName CLY_weaponparam=="ARRAY":_gun=CLY_weaponparam select (floor (random count CLY_weaponparam))
+_muzzles=getArray (configFile/"CfgWeapons"/_gun/"muzzles")
+_weapontype=getNumber (configFile/"CfgWeapons"/_gun/"type")
+
+;Primary magazine
+_mag=getArray (configFile/"CfgWeapons"/_gun/"magazines") select 0
+?_gun in CLY_altmagweaponarray:_mag=CLY_altmagarray select (CLY_altmagweaponarray find _gun)
+?CLY_unlimitedammo and _gun in CLY_unlimitedaltarray:_mag=CLY_unlimitedaltmagarray select (CLY_unlimitedaltarray find _gun)
+_magcount=CLY_ammodistrule select 1
+_magtype=getNumber (configFile/"CfgMagazines"/_mag/"type")
+
+;Grenade launcher
+_glmag="none"
+?_gun in CLY_glarray:_glmag=getArray (configFile/"CfgWeapons"/_gun/(_muzzles select 1)/"magazines") select 0
+_glmagcount=CLY_gldistrule select 1
+
+;Hand grenades
+_nadecount=CLY_handgrenadesadded
+?_weapontype==4 or _gun in CLY_glarray and CLY_gldistrule select 0==1:_nadecount=0
+
+;Secondary handgun
+_sechandgun=CLY_secondaryhandgunpool select (floor (random count CLY_secondaryhandgunpool))
+_sechandgunmag=getArray (configFile/"CfgWeapons"/_sechandgun/"magazines") select 0
+
+;Secondary launcher
+_seclauncher=CLY_secondarylauncherpool select (floor (random count CLY_secondarylauncherpool))
+_seclaunchermag=getArray (configFile/"CfgWeapons"/_seclauncher/"magazines") select 0
+_seclaunchermagsize=getNumber (configFile/"CfgMagazines"/_mag/"type")/256
+
+?_seclauncher in CLY_altmagweaponarray:_seclaunchermag=CLY_altmagarray select (CLY_altmagweaponarray find _seclauncher)
+?CLY_unlimitedammo and _seclauncher in CLY_unlimitedaltarray:_seclaunchermag=CLY_unlimitedaltmagarray select (CLY_unlimitedaltarray find _seclauncher)
+_seclauncherspace=(CLY_secondaryweapon select 1)*_seclaunchermagsize
+?_weapontype==5:_seclauncherspace=0
+
+
+
+;--Ammo count finetuning--
+;Magazine size
+_magsize=ceil (_magtype/256)
+_nadesize=getNumber (configFile/"CfgMagazines"/_mag/"type")/256
+
+?CLY_ammodistrule select 0==1 and _magsize>1:_magcount=ceil _magcount*(1/_magsize)
+
+;Bullet count
+_bulletcount=getNumber (configFile/"CfgMagazines"/_mag/"count")
+?CLY_ammodistrule select 0==2:_magcount=ceil _magcount*(1/_bulletcount)
+
+;Remove primary mags to make way for grenades and missiles
+?_magcount*_magsize+_nadecount*_nadesize+_seclauncherspace>12 and _magsize>1:_magcount=floor (12-_nadecount*_nadesize+_seclauncherspace)*(1/_magsize)
+?_magcount+_nadecount*_nadesize+_seclauncherspace>12 and _weapontype!=2:_magcount=12-(_nadecount*_nadesize+_seclauncherspace)
+
+;Mag amount for handguns
+?_magcount>8 and _weapontype==2:_magcount=8
+?_weapontype==2 and (CLY_ammodistrule select 3)>0:_magcount=CLY_ammodistrule select 3
+
+;Maximum ammo for launchers depending on missile size
+?CLY_ammodistrule select 2>0 and _weapontype==4:_magcount=CLY_ammodistrule select 2
+?_magcount>6 and _weapontype==4:_magcount=6
+?_magcount>2 and _weapontype==4 and _magsize==6:_magcount=2
+
+;Remove underslung grenades to make way for secondary handgun mags
+?_glmagcount>8:_glmagcount=8
+?_glmagcount+(CLY_secondaryweapon select 0)>8:_glmagcount=8-(CLY_secondaryweapon select 0)
+;//Ammo count finetuning//
+
+
+
+;Add magazines
+_magloop=0
+#magloop
+?_magloop>=_magcount or (_magloop==1 and CLY_unlimitedammo):_magloop=0;goto "nadeloop"
+_unit addMagazine _mag
+_magloop=_magloop+1
+goto "magloop"
+
+#nadeloop
+?_magloop>=_nadecount:_magloop=0;goto "glloop"
+_unit addMagazine CLY_handgrenadetype
+_magloop=_magloop+1
+goto "nadeloop"
+
+#glloop
+?_magloop>=_glmagcount or _glmag=="none":goto "magdone"
+_unit addMagazine _glmag
+_magloop=_magloop+1
+goto "glloop"
+#magdone
+
+;Add primary weapon
+_unit addWeapon _gun
+_muzzle=_gun
+?!("this" in _muzzles):_muzzle=_muzzles select 0
+_unit selectWeapon _muzzle
+
+?_weapontype==1 or _weapontype==5:_unit setVehicleInit "this switchMove 'amovpercmstpsraswrfldnon'"
+?_weapontype==2:_unit setVehicleInit "this switchMove 'amovpercmstpsraswpstdnon'"
+?_weapontype==4:_unit setVehicleInit "this switchMove 'amovpercmstpsraswlnrdnon'"
+processInitCommands
+
+;Secondary weapons
+_magloop=0
+#sechandgunloop
+?_magloop>=(CLY_secondaryweapon select 0) or _weapontype==2 or (_magloop==1 and CLY_unlimitedammo) or (CLY_secondaryweapon select 0)==0:_magloop=0;goto "seclauncherloop"
+_unit addMagazine _sechandgunmag
+?_magloop==0:_unit addWeapon _sechandgun
+_magloop=_magloop+1
+goto "sechandgunloop"
+
+#seclauncherloop
+?_magloop>=(CLY_secondaryweapon select 1) or _weapontype==5 or (_magloop==1 and (CLY_unlimitedammo or _seclaunchermagsize==6)) or (CLY_secondaryweapon select 1)==0:goto "secdone"
+_unit addMagazine _seclaunchermag
+?_magloop==0:_unit addWeapon _seclauncher
+_magloop=_magloop+1
+goto "seclauncherloop"
+#secdone
+;///Weapon load script///
+
+
+
+;---Condition checker---
+_looptime=time
+_loopwait=0.1
+CLY_heal=0
+?CLY_selfheal select 0==1 and local _unit and _grp==group _unit:CLY_heal=_unit addAction ["Heal","cly_heal.sqs",nil,2.5,false,true,"","damage player>0.05 and !(animationState player in CLY_healanims)"]
+_vodkakills=score player+2
+
+#check
+?!alive _unit:_unit setVehicleInit "[this] exec 'cly_bodyremoval.sqs'";processInitCommands;_startdir=random 360;_unit removeAction CLY_heal;goto "start"
+
+;Basic anti-cheat measures just in case (setFog is also vital for borders)
+setViewDistance CLY_viewdistance
+1 setFog CLY_foglevel
+player allowDamage true
+player removeAllEventHandlers "HandleDamage"
+
+;Health regeneration
+?CLY_selfheal select 0==2 and damage _unit>0:_unit setDamage (damage _unit)-(time-_looptime)/(CLY_selfheal select 1)
+
+;Limb protection
+?CLY_limbprotection==1 or CLY_limbprotection==3:_unit setHit ["legs",0]
+?CLY_limbprotection>2:_unit setHit ["hands",0]
+
+;Save player vehicle for deathcam
+CLY_playervehicle=vehicle player
+
+;Height detection for deathcam
+_anim=animationState _unit
+?_anim in CLY_standanims:CLY_playerheight=CLY_standheight
+?_anim in CLY_kneelanims:CLY_playerheight=CLY_kneelheight
+?_anim in CLY_proneanims:CLY_playerheight=CLY_proneheight
+
+;Anti-prone
+?(CLY_anticamp==1 or CLY_anticamp==3) and (_anim in CLY_proneanims) and canStand _unit:_unit playMove (CLY_kneelanims select (CLY_proneanims find _anim));titleText ["\n\nProning is disabled!","PLAIN",0.2]
+
+;VODKA! after 3rd kill in a row
+?score player>_vodkakills:_vodkakills=score player;player setvehicleinit "this say 'vodka2'";processInitCommands
+
+_looptime=time
+~_loopwait
+goto "check"
+;///Condition checker///

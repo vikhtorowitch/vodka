@@ -1,0 +1,47 @@
+;CLY DM Template for easy and fun deathmatch creation
+;
+;Ammo crate content script
+;Put this in a crate's init: [this,0] exec "cly_crate.sqs"
+;The number element chooses which loadout is used for that crate.
+;You have to create the alternate loadouts yourself if you have need for them.
+;
+;You only have to put the weapon classname and the amount you want to add in
+;_weaponarray, the magazines will be automatically added using the multiplier at the
+;end for each weapon added.
+;
+;Executed in an ammo crate's init line in the editor
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+_crate=_this select 0
+_number=0
+?count _this>1:_number=_this select 1
+
+_crate allowDamage false
+
+?_number==0:goto "crate0"
+?_number==1:goto "crate1"
+?_number==2:goto "crate2"
+?_number==3:goto "crate3"
+
+
+#crate0
+clearWeaponCargo _crate
+clearMagazineCargo _crate
+
+_crate addMagazineCargo ["HandGrenade",30]
+_crate addMagazineCargo ["PipeBomb",5]
+
+_weaponarray=["RPG7V",10]
+_ammo="OG7"
+_crate addWeaponCargo _weaponarray
+_crate addMagazineCargo [_ammo,(_weaponarray select 1)*6]
+exit
+
+#crate1
+exit
+
+#crate2
+exit
+
+#crate3
+exit
